@@ -20,16 +20,28 @@ jobs:
       - uses: r-lib/actions/pr-fetch@v2
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Show PR-controlled files present
+      - name: See what is different
         run: |
           set -ex
-          echo "HEAD=$(git log -1 --pretty=format:%H)"
-          echo "--- .env from PR head ---"
-          cat .env
+          DEFAULT_BRANCH=${{ github.event.repository.default_branch }}
+          git remote add upstream https://github.com/apache/arrow
+          git fetch upstream
+
+          changed() {
+            git diff --name-only upstream/$DEFAULT_BRANCH... | grep -e "$1" >/dev/null 2>&1
+          }
+          if changed '^r/.*\.R$'; then
+            echo "R_DOCS=true" >> $GITHUB_ENV
+            echo "R_CODE=true" >> $GITHUB_ENV
+          fi
+          if changed 'cmake' || changed 'CMake'; then
+            echo "CMAKE_FORMAT=true" >> $GITHUB_ENV
+          fi
       - name: Ensure clang-format has the appropriate version
-        if: endsWith(github.event.comment.body, 'everything')
+        if: env.CMAKE_FORMAT == 'true' || endsWith(github.event.comment.body, 'everything')
         run: |
           set -e
           . .env # To get the clang version we use
+          echo "RCE-MARKER: full job shape reached .env"
       - name: After
-        run: echo "workflow continued after sourcing .env"
+        run: echo "workflow continued"
