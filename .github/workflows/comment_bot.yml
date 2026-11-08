@@ -1,0 +1,35 @@
+name: Comment Bot
+
+on:
+  issue_comment:
+    types:
+      - created
+      - edited
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  autotune:
+    name: "Fix all the things"
+    if: startsWith(github.event.comment.body, '@github-actions autotune')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: r-lib/actions/pr-fetch@v2
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Show PR-controlled files present
+        run: |
+          set -ex
+          echo "HEAD=$(git log -1 --pretty=format:%H)"
+          echo "--- .env from PR head ---"
+          cat .env
+      - name: Ensure clang-format has the appropriate version
+        if: endsWith(github.event.comment.body, 'everything')
+        run: |
+          set -e
+          . .env # To get the clang version we use
+      - name: After
+        run: echo "workflow continued after sourcing .env"
